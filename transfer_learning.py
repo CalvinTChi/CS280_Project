@@ -10,12 +10,14 @@ import matplotlib.pyplot as plt
 import time
 import os
 import copy
-from random import shuffle
+from numpy.random import randint
 
-def batches(entries):
-    shuffle(entries)
-    for i in range(0, len(entries), 10000):
-        yield entries[i:i+10000]
+def batches(X, y, batch_size = 32):
+    n = len(X)
+    step = n/batch_size
+    for i in range(0, n, int(step)):
+        ind = randint(0, high=n, size=batch_size)
+        yield X[ind], y[ind]
         
 def de_normalize(image):
     mean=[0.485, 0.456, 0.406]
@@ -35,8 +37,8 @@ def visualize_model(model, dataset, num_images=6):
     inputs_og = inputs
     labels_og = labels
     
-    inputs = torch.from_numpy(inputs).double()
-    labels = torch.from_numpy(labels).double()
+    inputs = torch.from_numpy(inputs)
+    labels = torch.from_numpy(labels)
     
     mean = np.array([0.485, 0.456, 0.406])
     std = np.array([0.229, 0.224, 0.225])
@@ -86,23 +88,26 @@ def train_model(model, dataset, criterion, optimizer, scheduler, num_epochs=25):
             running_loss = 0.0
             running_corrects = 0
             
-            mini_batches = batches(dataset)
+            inputs, labels = dataset[phase]
             
-            for inputs, labels in mini_batches[phase]:                
+            for input, label in batches(inputs, labels):  
+                input = torch.from_numpy(input).float()
+                label = torch.from_numpy(label).float()
+                
                 # wrap them in Variable
                 if use_gpu:
-                    inputs = Variable(inputs.cuda())
-                    labels = Variable(labels.cuda())
+                    input = Variable(input.cuda())
+                    label = Variable(label.cuda())
                 else:
-                    inputs, labels = Variable(inputs), Variable(labels)
+                    input, label = Variable(input), Variable(label)
 
                 # zero the parameter gradients
                 optimizer.zero_grad()
 
                 # forward
-                outputs = model(inputs)
-                _, preds = torch.max(outputs.data, 1)
-                loss = criterion(outputs, labels)
+                output = model(input)
+                _, preds = torch.max(output.data, 1)
+                loss = criterion(output, label)
 
                 # backward + optimize only if in training phase
                 if phase == 'train':
@@ -110,8 +115,8 @@ def train_model(model, dataset, criterion, optimizer, scheduler, num_epochs=25):
                     optimizer.step()
 
                 # statistics
-                running_loss += loss.data[0] * inputs.size(0)
-                running_corrects += torch.sum(preds == labels.data)
+                running_loss += loss.data[0] * input.size(0)
+                running_corrects += torch.sum(preds == label.data)
 
             epoch_loss = running_loss / dataset_sizes[phase]
             epoch_acc = running_corrects / dataset_sizes[phase]
@@ -146,7 +151,7 @@ model_ft = models.resnet152(pretrained=True)
 num_ftrs = model_ft.fc.in_features
 model_ft.fc = nn.Linear(num_ftrs, 2)
 
-model_ft = model_ft.double()
+model_ft = model_ft.float()
 use_gpu = False
 
 if use_gpu:
