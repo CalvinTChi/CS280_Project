@@ -15,7 +15,7 @@ To run DCGAN for lymphoma cancer images
 
 To run DCGAN for lymphoma normal images
 
-python main.py --dataset lymph_normal --input_height=50 --output_height=50  --train
+`python main.py --dataset lymph_normal --input_height=50 --output_height=50  --train`
 
 After `n` number of iterations, DCGAN will (1) output a batch of generated images combined as a grid in `samples` (2) output batch of generated images individually under `lymph_cancer_images` or `lymph_normal_images`, along with the corresponding `npy` file. 
 
