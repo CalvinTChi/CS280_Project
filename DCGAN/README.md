@@ -6,6 +6,7 @@ Script to run deep convolutional GAN for lymphoma cancer classification
 
 1. Add `X.npy` and `Y.npy` to `./data/lymph` folder.
 2. Uncompress files in `./checkpoint/lymph_cancer_64_50_50` 
+3. Create folders `./data/lymph`, `./lymph_cancer_images`, `./lymph_normal_images`
 
 # Execution
 
