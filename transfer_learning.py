@@ -10,7 +10,13 @@ import matplotlib.pyplot as plt
 import time
 import os
 import copy
+from random import shuffle
 
+def batches(entries):
+    shuffle(entries)
+    for i in range(0, len(entries), 10000):
+        yield entries[i:i+10000]
+        
 def de_normalize(image):
     mean=[0.485, 0.456, 0.406]
     std=[0.229, 0.224, 0.225]
@@ -79,35 +85,33 @@ def train_model(model, dataset, criterion, optimizer, scheduler, num_epochs=25):
 
             running_loss = 0.0
             running_corrects = 0
-
-            inputs, labels = dataset[phase]
             
-            inputs = torch.from_numpy(inputs).double()
-            labels = torch.from_numpy(labels).double()
+            mini_batches = batches(dataset)
             
-            # wrap them in Variable
-            if use_gpu:
-                inputs = Variable(inputs.cuda())
-                labels = Variable(labels.cuda())
-            else:
-                inputs, labels = Variable(inputs), Variable(labels)
+            for inputs, labels in mini_batches[phase]:                
+                # wrap them in Variable
+                if use_gpu:
+                    inputs = Variable(inputs.cuda())
+                    labels = Variable(labels.cuda())
+                else:
+                    inputs, labels = Variable(inputs), Variable(labels)
 
-            # zero the parameter gradients
-            optimizer.zero_grad()
+                # zero the parameter gradients
+                optimizer.zero_grad()
 
-            # forward
-            outputs = model(inputs)
-            _, preds = torch.max(outputs.data, 1)
-            loss = criterion(outputs, labels)
+                # forward
+                outputs = model(inputs)
+                _, preds = torch.max(outputs.data, 1)
+                loss = criterion(outputs, labels)
 
-            # backward + optimize only if in training phase
-            if phase == 'train':
-                loss.backward()
-                optimizer.step()
+                # backward + optimize only if in training phase
+                if phase == 'train':
+                    loss.backward()
+                    optimizer.step()
 
-            # statistics
-            running_loss += loss.data[0] * inputs.size(0)
-            running_corrects += torch.sum(preds == labels.data)
+                # statistics
+                running_loss += loss.data[0] * inputs.size(0)
+                running_corrects += torch.sum(preds == labels.data)
 
             epoch_loss = running_loss / dataset_sizes[phase]
             epoch_acc = running_corrects / dataset_sizes[phase]
@@ -156,7 +160,7 @@ optimizer_ft = optim.SGD(model_ft.parameters(), lr=0.001, momentum=0.9)
 # Decay LR by a factor of 0.1 every 7 epochs
 exp_lr_scheduler = lr_scheduler.StepLR(optimizer_ft, step_size=7, gamma=0.1)
 
-# model_ft = train_model(model_ft, dataset, criterion, optimizer_ft, exp_lr_scheduler,
-                       # num_epochs=25)
-visualize_model(model_ft, dataset)
+model_ft = train_model(model_ft, dataset, criterion, optimizer_ft, exp_lr_scheduler,
+                       num_epochs=25)
+# visualize_model(model_ft, dataset)
 
