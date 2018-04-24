@@ -92,7 +92,7 @@ def train_model(model, dataset, criterion, optimizer, scheduler, num_epochs=25):
             
             for input, label in batches(inputs, labels):  
                 input = torch.from_numpy(input).float()
-                label = torch.from_numpy(label).float()
+                label = torch.from_numpy(label).long()
                 
                 # wrap them in Variable
                 if use_gpu:
@@ -118,8 +118,8 @@ def train_model(model, dataset, criterion, optimizer, scheduler, num_epochs=25):
                 running_loss += loss.data[0] * input.size(0)
                 running_corrects += torch.sum(preds == label.data)
 
-            epoch_loss = running_loss / dataset_sizes[phase]
-            epoch_acc = running_corrects / dataset_sizes[phase]
+            epoch_loss = running_loss / len(inputs) 
+            epoch_acc = running_corrects / len(inputs)
 
             print('{} Loss: {:.4f} Acc: {:.4f}'.format(
                 phase, epoch_loss, epoch_acc))
@@ -152,8 +152,8 @@ num_ftrs = model_ft.fc.in_features
 model_ft.fc = nn.Linear(num_ftrs, 2)
 
 model_ft = model_ft.float()
-use_gpu = False
-
+use_gpu = torch.cuda.is_available()
+print("Use gpu: ", use_gpu)
 if use_gpu:
     model_ft = model_ft.cuda()
 
