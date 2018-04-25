@@ -1,7 +1,5 @@
 .DS_Store
 debug*
-checkpoints/
-results/
 build/
 dist/
 *.png
