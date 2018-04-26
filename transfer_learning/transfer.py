@@ -108,6 +108,15 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
 
             print('{} Loss: {:.4f} Acc: {:.4f}'.format(
                 phase, epoch_loss, epoch_acc))
+            
+            
+            # Log the loss, accuracy, model every 5 epoch
+            if epoch % 5 == 0:
+                PATH = './checkpoints/' + str(epoch)
+                torch.save(the_model.state_dict(), PATH)
+                stats = np.array([epoch_loss, epoch_acc])
+                file_name = phase + '_' + str(epoch)
+                np.save(file_name, stats)
 
             # deep copy the model
             if phase == 'val' and epoch_acc > best_acc:
@@ -178,6 +187,6 @@ optimizer_ft = optim.SGD(model_ft.parameters(), lr=0.001, momentum=0.9)
 exp_lr_scheduler = lr_scheduler.StepLR(optimizer_ft, step_size=7, gamma=0.1)
 
 model_ft = train_model(model_ft, criterion, optimizer_ft, exp_lr_scheduler,
-                       num_epochs=25)
-                       
-visualize_model(model_ft)
+                       num_epochs=50)
+torch.save(the_model.state_dict(), './checkpoints/final')
+# visualize_model(model_ft)
