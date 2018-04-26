@@ -110,14 +110,16 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
                 phase, epoch_loss, epoch_acc))
             
             
-            # Log the loss, accuracy, model every 5 epoch
+            # Log the model every 5 epoch
             if epoch % 5 == 0:
-		print("Logging and checkpointing")
+		        print("Logging and checkpointing")
                 PATH = './checkpoints/' + str(epoch) + '.pth'
                 torch.save(model.state_dict(), PATH)
-                stats = np.array([epoch_loss, epoch_acc])
-                file_name = './logs/' + phase + '_' + str(epoch) + '.npy'
-                np.save(file_name, stats)
+            
+            # Log the stats every epoch
+            stats = np.array([epoch_loss, epoch_acc])
+            file_name = './logs/' + phase + '_' + str(epoch) + '.npy'
+            np.save(file_name, stats)
 
             # deep copy the model
             if phase == 'val' and epoch_acc > best_acc:
