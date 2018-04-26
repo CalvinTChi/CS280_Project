@@ -22,5 +22,7 @@ for f in glob.glob(v_dir):
     v_loss.append(stat[0])
     v_acc.append(stat[1])
 
+plt.plot(t_acc)
+plt.show()
 plt.plot(v_acc)
 plt.show()
