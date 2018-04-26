@@ -111,8 +111,8 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
             
             
             # Log the model every 5 epoch
-            if epoch % 5 == 0:
-		        print("Logging and checkpointing")
+            if epoch % 5 ==0:
+                print("Logging and checkpointing")
                 PATH = './checkpoints/' + str(epoch) + '.pth'
                 torch.save(model.state_dict(), PATH)
             
@@ -191,5 +191,5 @@ exp_lr_scheduler = lr_scheduler.StepLR(optimizer_ft, step_size=7, gamma=0.1)
 
 model_ft = train_model(model_ft, criterion, optimizer_ft, exp_lr_scheduler,
                        num_epochs=25)
-torch.save(the_model.state_dict(), './checkpoints/final')
+torch.save(model_ft.state_dict(), './checkpoints/final.pt')
 # visualize_model(model_ft)
