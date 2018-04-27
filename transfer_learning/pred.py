@@ -40,7 +40,7 @@ dataloaders = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=1,
 dataset_sizes = {x: len(image_datasets[x]) for x in ['train', 'val']}
 class_names = image_datasets['train'].classes
 
-model_weights = torch.load('./checkpoints/transfer_combined/final.pth',map_location='cpu') 
+model_weights = torch.load('./checkpoints/transfer_combined_reverse/final.pth',map_location='cpu') 
 
 model_ft = models.resnet18(pretrained=True)
 num_ftrs = model_ft.fc.in_features
@@ -60,5 +60,5 @@ for input, truth in iter(dataloaders['val']):
     truths.append(truth.numpy())
 preds = np.array(preds)
 truths = np.array(truths)
-np.save('./predictions/transfer_combined/preds.npy', preds)
-np.save('./predictions/transfer_combined/truths.npy', truths)
+np.save('./predictions/transfer_combined_reversed/preds.npy', preds)
+np.save('./predictions/transfer_combined_reversed/truths.npy', truths)
