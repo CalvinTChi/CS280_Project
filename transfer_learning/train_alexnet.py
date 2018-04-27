@@ -154,7 +154,7 @@ data_transforms = {
     ]),
 }
 
-data_dir = 'combined_data'
+data_dir = 'data'
 image_datasets = {x: datasets.ImageFolder(os.path.join(data_dir, x),
                                           data_transforms[x])
                   for x in ['train', 'val']}
@@ -188,6 +188,6 @@ optimizer_ft = optim.SGD(model_ft.parameters(), lr=0.001, momentum=0.9)
 exp_lr_scheduler = lr_scheduler.StepLR(optimizer_ft, step_size=7, gamma=0.1)
 
 model_ft = train_model(model_ft, criterion, optimizer_ft, exp_lr_scheduler,
-                       num_epochs=25)
+                       num_epochs=100)
 torch.save(model_ft.state_dict(), './checkpoints/final.pt')
 # visualize_model(model_ft)
