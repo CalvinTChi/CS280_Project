@@ -19,9 +19,8 @@ class DCGAN(object):
          y_dim=None, z_dim=100, gf_dim=64, df_dim=64,
          gfc_dim=1024, dfc_dim=1024, c_dim=3, dataset_name='default',
          input_fname_pattern='*.jpg', checkpoint_dir=None, sample_dir=None, data_dir='./data',
-         output_freq=20):
+         output_freq=20, epoch_num=0, counter=1, trial=None):
     """
-
     Args:
       sess: TensorFlow session
       batch_size: The size of batch. Should be specified before training.
@@ -52,8 +51,12 @@ class DCGAN(object):
 
     self.gfc_dim = gfc_dim
     self.dfc_dim = dfc_dim
-
+    
+    # new added fields
     self.output_freq = output_freq
+    self.counter = counter
+    self.epoch_num = epoch_num
+    self.trial = trial
 
     # batch normalization : deals with poor initialization helps gradient flow
     self.d_bn1 = batch_norm(name='d_bn1')
@@ -74,11 +77,10 @@ class DCGAN(object):
     self.checkpoint_dir = checkpoint_dir
     self.data_dir = data_dir
 
+    dataset_name_split = self.dataset_name.split("_")
+
     if self.dataset_name == 'mnist':
       self.data_X, self.data_y = self.load_mnist()
-      self.c_dim = self.data_X[0].shape[-1]
-    elif self.dataset_name == 'mnist8':
-      self.data_X, self.data_y = self.load_mnist8()
       self.c_dim = self.data_X[0].shape[-1]
     elif self.dataset_name == 'lymph_cancer':
       self.data_X, self.data_y = self.load_lymph_cancer()
@@ -86,10 +88,11 @@ class DCGAN(object):
     elif self.dataset_name == 'lymph_normal':
       self.data_X, self.data_y = self.load_lymph_normal()
       self.c_dim = self.data_X[0].shape[-1]
-    elif self.dataset_name == 'bedroom':
-      self.data_X, self.data_y = self.load_bedroom()
+    elif dataset_name_split[0] == "cluster":
+      self.data, _ = self.load_cluster(self.dataset_name)
+      self.c_dim = self.data[0].shape[-1]
     else:
-      self.data = glob(os.path.join(self.data_dir, self.dataset_name, self.input_fname_pattern))
+      self.data = glob(os.path.join(self.data_dir, self.input_fname_pattern))
       imreadImg = imread(self.data[0])
       if len(imreadImg.shape) >= 3: #check if image is a non-grayscale image by checking channel number
         self.c_dim = imread(self.data[0]).shape[-1]
@@ -136,7 +139,7 @@ class DCGAN(object):
         return tf.nn.sigmoid_cross_entropy_with_logits(logits=x, targets=y)
 
     self.d_loss_real = tf.reduce_mean(
-      sigmoid_cross_entropy_with_logits(self.D_logits, tf.ones_like(self.D) * (0.9)))
+      sigmoid_cross_entropy_with_logits(self.D_logits, tf.ones_like(self.D)))
     self.d_loss_fake = tf.reduce_mean(
       sigmoid_cross_entropy_with_logits(self.D_logits_, tf.zeros_like(self.D_)))
     self.g_loss = tf.reduce_mean(
@@ -174,13 +177,15 @@ class DCGAN(object):
     self.writer = SummaryWriter("./logs", self.sess.graph)
 
     sample_z = np.random.uniform(-1, 1, size=(self.sample_num , self.z_dim))
+
+    dataset_name_split = self.dataset_name.split("_")
     
-    #if (config.dataset == 'mnist' or config.dataset == 'mnist8' or
-    #config.dataset == 'lymph_cancer' or config.dataset == 'lymph_normal'):
     if (config.dataset == 'lymph_cancer' or config.dataset == 'lymph_normal' or
-      config.dataset == 'mnist' or config.dataset == 'mnist8'):
+      config.dataset == 'mnist'):
       sample_inputs = self.data_X[0:self.sample_num]
       sample_labels = self.data_y[0:self.sample_num]
+    elif dataset_name_split[0] == "cluster":
+      sample_inputs = self.data[0:self.sample_num]
     else:
       sample_files = self.data[0:self.sample_num]
       sample = [
@@ -196,8 +201,11 @@ class DCGAN(object):
       else:
         sample_inputs = np.array(sample).astype(np.float32)
   
-    counter = 1
+    counter = self.counter
     start_time = time.time()
+    # Save losses
+    losses = np.empty((0, 3))
+
     could_load, checkpoint_counter = self.load(self.checkpoint_dir)
     if could_load:
       counter = checkpoint_counter
@@ -205,22 +213,27 @@ class DCGAN(object):
     else:
       print(" [!] Load failed...")
 
-    for epoch in xrange(config.epoch):
-      #if (config.dataset == 'mnist' or config.dataset == 'mnist8' or 
-      #config.dataset == 'lymph_cancer' or config.dataset == 'lymph_normal'):
-      if (config.dataset == 'mnist' or config.dataset == 'mnist8' or 
-        config.dataset == 'lymph_cancer' or config.dataset == 'lymph_normal'):
+    if not os.path.exists(config.sample_dir):
+      os.makedirs(config.sample_dir)
+
+    for epoch in xrange(self.epoch_num, config.epoch):
+      if (config.dataset == 'mnist' or config.dataset == 'lymph_cancer' or 
+        config.dataset == 'lymph_normal'):
         batch_idxs = min(len(self.data_X), config.train_size) // config.batch_size
+      elif dataset_name_split[0] == 'cluster':
+        batch_idxs = min(len(self.data), config.train_size) // config.batch_size
       else:      
         self.data = glob(os.path.join(
-          config.data_dir, config.dataset, self.input_fname_pattern))
+          config.data_dir, self.input_fname_pattern))
         batch_idxs = min(len(self.data), config.train_size) // config.batch_size
 
       for idx in xrange(0, batch_idxs):
-        if (config.dataset == 'mnist' or config.dataset == 'mnist8' or
-          config.dataset == 'lymph_cancer' or config.dataset == 'lymph_normal'):
+        if (config.dataset == 'mnist' or config.dataset == 'lymph_cancer' or 
+          config.dataset == 'lymph_normal'):
           batch_images = self.data_X[idx*config.batch_size:(idx+1)*config.batch_size]
           batch_labels = self.data_y[idx*config.batch_size:(idx+1)*config.batch_size]
+        elif dataset_name_split[0] == "cluster":
+          batch_images = self.data[idx*config.batch_size:(idx+1)*config.batch_size]
         else:
           batch_files = self.data[idx*config.batch_size:(idx+1)*config.batch_size]
           batch = [
@@ -239,7 +252,7 @@ class DCGAN(object):
         batch_z = np.random.uniform(-1, 1, [config.batch_size, self.z_dim]) \
               .astype(np.float32)
 
-        if (config.dataset == 'mnist' or config.dataset == 'mnist8'):
+        if config.dataset == 'mnist':
           # Update D network
           _, summary_str = self.sess.run([d_optim, self.d_sum],
             feed_dict={ 
@@ -299,54 +312,44 @@ class DCGAN(object):
           % (epoch, config.epoch, idx, batch_idxs,
             time.time() - start_time, errD_fake+errD_real, errG))
 
-        if np.mod(counter, self.output_freq) == 1:
-          if (config.dataset == 'mnist' or config.dataset == 'mnist8'):
+        losses = np.vstack((losses, [counter, errD_fake+errD_real, errG]))
+
+        if np.mod(counter, self.output_freq) == 0:
+          if config.dataset == 'mnist':
             samples, d_loss, g_loss = self.sess.run(
+              [self.sampler, self.d_loss, self.g_loss],
+              feed_dict={
+                  self.z: sample_z,
+                  self.inputs: sample_inputs,
+                  self.y:sample_labels,
+              }
+            )
+            save_images(samples, image_manifold_size(samples.shape[0]),
+                  './{}/train_{:02d}_{:04d}.png'.format(config.sample_dir, epoch, idx))
+            print("[Sample] d_loss: %.8f, g_loss: %.8f" % (d_loss, g_loss)) 
+          else:
+            try:
+              samples, d_loss, g_loss = self.sess.run(
                 [self.sampler, self.d_loss, self.g_loss],
                 feed_dict={
                     self.z: sample_z,
                     self.inputs: sample_inputs,
-                    self.y:sample_labels,
-                }
+                },
               )
-            save_images(samples, image_manifold_size(samples.shape[0]),
-                  './{}/train_{:02d}_{:04d}.png'.format(config.sample_dir, epoch, idx))
-            if config.dataset == 'mnist8':
-              samples = self.sess.run(self.sampler, feed_dict={self.z: sample_z, self.y: sample_labels})
-              single_image_save(samples, "./mnist8_images/")
-            print("[Sample] d_loss: %.8f, g_loss: %.8f" % (d_loss, g_loss))
-          else:
-            try:
-              samples, d_loss, g_loss = self.sess.run(
-                  [self.sampler, self.d_loss, self.g_loss],
-                  feed_dict={
-                      self.z: sample_z,
-                      self.inputs: sample_inputs,
-                  },
-                )
               save_images(samples, image_manifold_size(samples.shape[0]),
-                './{}/train_{:02d}_{:04d}.png'.format(config.sample_dir, epoch, idx))
+                    './{}/train_{:02d}_{:04d}.png'.format(config.sample_dir, epoch, idx))
               print("[Sample] d_loss: %.8f, g_loss: %.8f" % (d_loss, g_loss)) 
             except:
               print("one pic error!...")
-            if config.dataset == 'lymph_cancer':
-              samples = self.sess.run(self.sampler, feed_dict={self.z: sample_z})
-              single_image_save(samples, "./lymph_cancer_images/")
-            elif config.dataset == 'lymph_normal':
-              samples = self.sess.run(self.sampler, feed_dict={self.z: sample_z})
-              single_image_save(samples, "./lymph_normal_images/")
 
-        if np.mod(counter, self.output_freq) == 1:
+        if np.mod(counter, self.output_freq) == 0:
           self.save(config.checkpoint_dir, counter)
+    np.savetxt("./losses/" + self.dataset_name + "/losses.csv", losses, header="iteration,d_loss,g_loss", delimiter=",")
 
   def discriminator(self, image, y=None, reuse=False):
     with tf.variable_scope("discriminator") as scope:
       if reuse:
         scope.reuse_variables()
-
-      # Add Gaussian White noise
-      noise = np.random.normal(scale = 0.1, size = (self.batch_size, self.input_height, self.input_width, self.c_dim))
-      image = image + noise
 
       if not self.y_dim:
         h0 = lrelu(conv2d(image, self.df_dim, name='d_h0_conv'))
@@ -378,10 +381,10 @@ class DCGAN(object):
     with tf.variable_scope("generator") as scope:
       if not self.y_dim:
         s_h, s_w = self.output_height, self.output_width
-        s_h2, s_w2 = conv_out_size_same(s_h, 2), conv_out_size_same(s_w, 2)
-        s_h4, s_w4 = conv_out_size_same(s_h2, 2), conv_out_size_same(s_w2, 2)
-        s_h8, s_w8 = conv_out_size_same(s_h4, 2), conv_out_size_same(s_w4, 2)
-        s_h16, s_w16 = conv_out_size_same(s_h8, 2), conv_out_size_same(s_w8, 2)
+        s_h2, s_w2 = conv_out_size_same(s_h, 1), conv_out_size_same(s_w, 1)
+        s_h4, s_w4 = conv_out_size_same(s_h2, 1), conv_out_size_same(s_w2, 1)
+        s_h8, s_w8 = conv_out_size_same(s_h4, 1), conv_out_size_same(s_w4, 1)
+        s_h16, s_w16 = conv_out_size_same(s_h8, 1), conv_out_size_same(s_w8, 1)
 
         # project `z` and reshape
         self.z_, self.h0_w, self.h0_b = linear(
@@ -392,19 +395,23 @@ class DCGAN(object):
         h0 = tf.nn.relu(self.g_bn0(self.h0))
 
         self.h1, self.h1_w, self.h1_b = deconv2d(
-            h0, [self.batch_size, s_h8, s_w8, self.gf_dim*4], name='g_h1', with_w=True)
+            h0, [self.batch_size, s_h8, s_w8, self.gf_dim*4], name='g_h1', with_w=True,
+            d_h=1, d_w=1)
         h1 = tf.nn.relu(self.g_bn1(self.h1))
 
         h2, self.h2_w, self.h2_b = deconv2d(
-            h1, [self.batch_size, s_h4, s_w4, self.gf_dim*2], name='g_h2', with_w=True)
+            h1, [self.batch_size, s_h4, s_w4, self.gf_dim*2], name='g_h2', with_w=True,
+            d_h=1, d_w=1)
         h2 = tf.nn.relu(self.g_bn2(h2))
 
         h3, self.h3_w, self.h3_b = deconv2d(
-            h2, [self.batch_size, s_h2, s_w2, self.gf_dim*1], name='g_h3', with_w=True)
+            h2, [self.batch_size, s_h2, s_w2, self.gf_dim*1], name='g_h3', with_w=True,
+            d_h=1, d_w=1)
         h3 = tf.nn.relu(self.g_bn3(h3))
 
         h4, self.h4_w, self.h4_b = deconv2d(
-            h3, [self.batch_size, s_h, s_w, self.c_dim], name='g_h4', with_w=True)
+            h3, [self.batch_size, s_h, s_w, self.c_dim], name='g_h4', with_w=True,
+            d_h=1, d_w=1)
 
         return tf.nn.tanh(h4)
       else:
@@ -439,10 +446,10 @@ class DCGAN(object):
 
       if not self.y_dim:
         s_h, s_w = self.output_height, self.output_width
-        s_h2, s_w2 = conv_out_size_same(s_h, 2), conv_out_size_same(s_w, 2)
-        s_h4, s_w4 = conv_out_size_same(s_h2, 2), conv_out_size_same(s_w2, 2)
-        s_h8, s_w8 = conv_out_size_same(s_h4, 2), conv_out_size_same(s_w4, 2)
-        s_h16, s_w16 = conv_out_size_same(s_h8, 2), conv_out_size_same(s_w8, 2)
+        s_h2, s_w2 = conv_out_size_same(s_h, 1), conv_out_size_same(s_w, 1)
+        s_h4, s_w4 = conv_out_size_same(s_h2, 1), conv_out_size_same(s_w2, 1)
+        s_h8, s_w8 = conv_out_size_same(s_h4, 1), conv_out_size_same(s_w4, 1)
+        s_h16, s_w16 = conv_out_size_same(s_h8, 1), conv_out_size_same(s_w8, 1)
 
         # project `z` and reshape
         h0 = tf.reshape(
@@ -450,16 +457,16 @@ class DCGAN(object):
             [-1, s_h16, s_w16, self.gf_dim * 8])
         h0 = tf.nn.relu(self.g_bn0(h0, train=False))
 
-        h1 = deconv2d(h0, [self.batch_size, s_h8, s_w8, self.gf_dim*4], name='g_h1')
+        h1 = deconv2d(h0, [self.batch_size, s_h8, s_w8, self.gf_dim*4], d_w=1, d_h=1, name='g_h1')
         h1 = tf.nn.relu(self.g_bn1(h1, train=False))
 
-        h2 = deconv2d(h1, [self.batch_size, s_h4, s_w4, self.gf_dim*2], name='g_h2')
+        h2 = deconv2d(h1, [self.batch_size, s_h4, s_w4, self.gf_dim*2], d_w=1, d_h=1, name='g_h2')
         h2 = tf.nn.relu(self.g_bn2(h2, train=False))
 
-        h3 = deconv2d(h2, [self.batch_size, s_h2, s_w2, self.gf_dim*1], name='g_h3')
+        h3 = deconv2d(h2, [self.batch_size, s_h2, s_w2, self.gf_dim*1], d_w=1, d_h=1, name='g_h3')
         h3 = tf.nn.relu(self.g_bn3(h3, train=False))
 
-        h4 = deconv2d(h3, [self.batch_size, s_h, s_w, self.c_dim], name='g_h4')
+        h4 = deconv2d(h3, [self.batch_size, s_h, s_w, self.c_dim], d_w=1, d_h=1, name='g_h4')
 
         return tf.nn.tanh(h4)
       else:
@@ -522,47 +529,6 @@ class DCGAN(object):
     
     return X/255.,y_vec
 
-  def load_mnist8(self):
-    data_dir = os.path.join(self.data_dir, self.dataset_name)
-    
-    fd = open(os.path.join(data_dir,'train-images-idx3-ubyte'))
-    loaded = np.fromfile(file=fd,dtype=np.uint8)
-    trX = loaded[16:].reshape((60000,28,28,1)).astype(np.float)
-
-    fd = open(os.path.join(data_dir,'train-labels-idx1-ubyte'))
-    loaded = np.fromfile(file=fd,dtype=np.uint8)
-    trY = loaded[8:].reshape((60000)).astype(np.float)
-
-    fd = open(os.path.join(data_dir,'t10k-images-idx3-ubyte'))
-    loaded = np.fromfile(file=fd,dtype=np.uint8)
-    teX = loaded[16:].reshape((10000,28,28,1)).astype(np.float)
-
-    fd = open(os.path.join(data_dir,'t10k-labels-idx1-ubyte'))
-    loaded = np.fromfile(file=fd,dtype=np.uint8)
-    teY = loaded[8:].reshape((10000)).astype(np.float)
-
-    trY = np.asarray(trY)
-    teY = np.asarray(teY)
-    
-    X = np.concatenate((trX, teX), axis=0)
-    y = np.concatenate((trY, teY), axis=0).astype(np.int)
-    
-    seed = 547
-    np.random.seed(seed)
-    np.random.shuffle(X)
-    np.random.seed(seed)
-    np.random.shuffle(y)
-
-    idx = np.where(y == 8)
-    X = X[idx[0], :]
-    y = y[idx[0]]
-    
-    y_vec = np.zeros((len(y), self.y_dim), dtype=np.float)
-    for i, label in enumerate(y):
-      y_vec[i,0] = 1.0
-    
-    return X/255.,y_vec
-
   def load_lymph_cancer(self):
     data_dir = './data/lymph/'
 
@@ -597,16 +563,19 @@ class DCGAN(object):
     
     return imgs/255., y_vec
 
-  def load_bedroom(self):
-    data_dir = './data/'
-    imgs = np.load(data_dir, + 'bedroom.npy')
-    return imgs/255.
+  def load_cluster(self, dataset):
+    data_dir = './data/clusters/'
+    
+    imgs = np.load(data_dir + dataset + '.npy')
+
+    return imgs/255., None
 
   @property
   def model_dir(self):
-    return "{}_{}_{}_{}".format(
-        self.dataset_name, self.batch_size,
-        self.output_height, self.output_width)
+    if self.trial:
+      return "{}_{}".format(self.dataset_name, "trial" + str(self.trial))
+    else:
+      return "{}".format(self.dataset_name)
       
   def save(self, checkpoint_dir, step):
     model_name = "DCGAN.model"
@@ -623,6 +592,8 @@ class DCGAN(object):
     import re
     print(" [*] Reading checkpoints...")
     checkpoint_dir = os.path.join(checkpoint_dir, self.model_dir)
+
+    print(checkpoint_dir)
 
     ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
     if ckpt and ckpt.model_checkpoint_path:
