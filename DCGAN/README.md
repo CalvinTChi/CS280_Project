@@ -9,7 +9,6 @@ Train recommended inputs
 
 `
 python main.py --dataset [dataset_name] --input_height=[num] --output_height=[num] --data_dir [data_dir] --input_fname_pattern="*.jpg" --trial=[num] --epoch_num=[num] --counter=[num] --output_freq=[num] --train 
-
 `
 
 + `dataset_name`: name of folders created under checkpoint, losses, training_images
