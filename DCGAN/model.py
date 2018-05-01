@@ -18,7 +18,8 @@ class DCGAN(object):
          batch_size=64, sample_num = 64, output_height=64, output_width=64,
          y_dim=None, z_dim=100, gf_dim=64, df_dim=64,
          gfc_dim=1024, dfc_dim=1024, c_dim=3, dataset_name='default',
-         input_fname_pattern='*.jpg', checkpoint_dir=None, sample_dir=None, data_dir='./data'):
+         input_fname_pattern='*.jpg', checkpoint_dir=None, sample_dir=None, data_dir='./data',
+         output_freq=20):
     """
 
     Args:
@@ -52,6 +53,8 @@ class DCGAN(object):
     self.gfc_dim = gfc_dim
     self.dfc_dim = dfc_dim
 
+    self.output_freq = output_freq
+
     # batch normalization : deals with poor initialization helps gradient flow
     self.d_bn1 = batch_norm(name='d_bn1')
     self.d_bn2 = batch_norm(name='d_bn2')
@@ -83,6 +86,8 @@ class DCGAN(object):
     elif self.dataset_name == 'lymph_normal':
       self.data_X, self.data_y = self.load_lymph_normal()
       self.c_dim = self.data_X[0].shape[-1]
+    elif self.dataset_name == 'bedroom':
+      self.data_X, self.data_y = self.load_bedroom()
     else:
       self.data = glob(os.path.join(self.data_dir, self.dataset_name, self.input_fname_pattern))
       imreadImg = imread(self.data[0])
@@ -131,7 +136,7 @@ class DCGAN(object):
         return tf.nn.sigmoid_cross_entropy_with_logits(logits=x, targets=y)
 
     self.d_loss_real = tf.reduce_mean(
-      sigmoid_cross_entropy_with_logits(self.D_logits, tf.ones_like(self.D)))
+      sigmoid_cross_entropy_with_logits(self.D_logits, tf.ones_like(self.D) * (0.9)))
     self.d_loss_fake = tf.reduce_mean(
       sigmoid_cross_entropy_with_logits(self.D_logits_, tf.zeros_like(self.D_)))
     self.g_loss = tf.reduce_mean(
@@ -294,8 +299,23 @@ class DCGAN(object):
           % (epoch, config.epoch, idx, batch_idxs,
             time.time() - start_time, errD_fake+errD_real, errG))
 
-        if config.dataset == 'lymph_cancer' or config.dataset == 'lymph_normal':
-          if np.mod(counter, 20) == 1:
+        if np.mod(counter, self.output_freq) == 1:
+          if (config.dataset == 'mnist' or config.dataset == 'mnist8'):
+            samples, d_loss, g_loss = self.sess.run(
+                [self.sampler, self.d_loss, self.g_loss],
+                feed_dict={
+                    self.z: sample_z,
+                    self.inputs: sample_inputs,
+                    self.y:sample_labels,
+                }
+              )
+            save_images(samples, image_manifold_size(samples.shape[0]),
+                  './{}/train_{:02d}_{:04d}.png'.format(config.sample_dir, epoch, idx))
+            if config.dataset == 'mnist8':
+              samples = self.sess.run(self.sampler, feed_dict={self.z: sample_z, self.y: sample_labels})
+              single_image_save(samples, "./mnist8_images/")
+            print("[Sample] d_loss: %.8f, g_loss: %.8f" % (d_loss, g_loss))
+          else:
             try:
               samples, d_loss, g_loss = self.sess.run(
                   [self.sampler, self.d_loss, self.g_loss],
@@ -315,54 +335,18 @@ class DCGAN(object):
             elif config.dataset == 'lymph_normal':
               samples = self.sess.run(self.sampler, feed_dict={self.z: sample_z})
               single_image_save(samples, "./lymph_normal_images/")
-        else:
-          if np.mod(counter, 100) == 1:
-            if (config.dataset == 'mnist' or config.dataset == 'mnist8'):
-              samples, d_loss, g_loss = self.sess.run(
-                [self.sampler, self.d_loss, self.g_loss],
-                feed_dict={
-                    self.z: sample_z,
-                    self.inputs: sample_inputs,
-                    self.y:sample_labels,
-                }
-              )
-              save_images(samples, image_manifold_size(samples.shape[0]),
-                    './{}/train_{:02d}_{:04d}.png'.format(config.sample_dir, epoch, idx))
-              if config.dataset == 'mnist8':
-                samples = self.sess.run(self.sampler, feed_dict={self.z: sample_z, self.y: sample_labels})
-                single_image_save(samples, "./mnist8_images/")
-              print("[Sample] d_loss: %.8f, g_loss: %.8f" % (d_loss, g_loss))
-            else:
-              try:
-                samples, d_loss, g_loss = self.sess.run(
-                  [self.sampler, self.d_loss, self.g_loss],
-                  feed_dict={
-                      self.z: sample_z,
-                      self.inputs: sample_inputs,
-                  },
-                )
-                save_images(samples, image_manifold_size(samples.shape[0]),
-                      './{}/train_{:02d}_{:04d}.png'.format(config.sample_dir, epoch, idx))
-                print("[Sample] d_loss: %.8f, g_loss: %.8f" % (d_loss, g_loss)) 
-              except:
-                print("one pic error!...")
 
-        if np.mod(counter, 20) == 1:
+        if np.mod(counter, self.output_freq) == 1:
           self.save(config.checkpoint_dir, counter)
-
-  def generate_images(self, reuse = True):
-    tf.global_variables_initializer().run()
-    num = 64
-    z_dim = 100
-    sample_z = np.random.uniform(-1, 1, size=(num, z_dim))
-    sample_y = np.ones(shape = (num, 1))
-    samples = self.sess.run(self.generator, feed_dict = {z: sample_z, y: sample_y})
-    return samples
 
   def discriminator(self, image, y=None, reuse=False):
     with tf.variable_scope("discriminator") as scope:
       if reuse:
         scope.reuse_variables()
+
+      # Add Gaussian White noise
+      noise = np.random.normal(scale = 0.1, size = (self.batch_size, self.input_height, self.input_width, self.c_dim))
+      image = image + noise
 
       if not self.y_dim:
         h0 = lrelu(conv2d(image, self.df_dim, name='d_h0_conv'))
@@ -593,8 +577,6 @@ class DCGAN(object):
     y_vec = np.zeros((len(labels), 1), dtype=np.float)
     for i, label in enumerate(labels):
       y_vec[i,0] = 1
-
-    print(type(y_vec))
     
     return imgs/255., y_vec
 
@@ -614,6 +596,11 @@ class DCGAN(object):
       y_vec[i,0] = 1
     
     return imgs/255., y_vec
+
+  def load_bedroom(self):
+    data_dir = './data/'
+    imgs = np.load(data_dir, + 'bedroom.npy')
+    return imgs/255.
 
   @property
   def model_dir(self):

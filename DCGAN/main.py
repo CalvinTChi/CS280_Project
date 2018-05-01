@@ -26,6 +26,7 @@ flags.DEFINE_boolean("train", False, "True for training, False for testing [Fals
 flags.DEFINE_boolean("crop", False, "True for training, False for testing [False]")
 flags.DEFINE_boolean("visualize", False, "True for visualizing, False for nothing [False]")
 flags.DEFINE_integer("generate_test_images", 100, "Number of images to generate during test. [100]")
+flags.DEFINE_integer("output_freq", 20, "Number of iterations before every generated image output [20]")
 FLAGS = flags.FLAGS
 
 def main(_):
@@ -96,7 +97,26 @@ def main(_):
           crop=FLAGS.crop,
           checkpoint_dir=FLAGS.checkpoint_dir,
           sample_dir=FLAGS.sample_dir,
-          data_dir=FLAGS.data_dir)
+          data_dir=FLAGS.data_dir,
+          output_freq = FLAGS.output_freq)
+    elif FLAGS.dataset == 'bedroom':
+      dcgan = DCGAN(
+          sess,
+          input_width=FLAGS.input_width,
+          input_height=FLAGS.input_height,
+          output_width=FLAGS.output_width,
+          output_height=FLAGS.output_height,
+          batch_size=FLAGS.batch_size,
+          sample_num=FLAGS.batch_size,
+          #y_dim=1,
+          z_dim=FLAGS.generate_test_images,
+          dataset_name=FLAGS.dataset,
+          input_fname_pattern=FLAGS.input_fname_pattern,
+          crop=FLAGS.crop,
+          checkpoint_dir=FLAGS.checkpoint_dir,
+          sample_dir=FLAGS.sample_dir,
+          data_dir=FLAGS.data_dir,
+          output_freq = FLAGS.output_freq)
     else:
       dcgan = DCGAN(
           sess,

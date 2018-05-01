@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import glob
 
-model = '/transfer_combined'
+model = '/transfer_real'
 t_dir = './logs' + model + '/train*.npy'
 v_dir = './logs' + model + '/val*.npy'
 
