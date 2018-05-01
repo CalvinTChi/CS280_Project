@@ -1,5 +1,5 @@
 # DCGAN
-Script to run deep convolutional GAN, taken from [carpedm20](https://github.com/carpedm20/DCGAN-tensorflow/) and edited from this project. The script should be run in 2 stages
+Script to run deep convolutional GAN, taken from [carpedm20](https://github.com/carpedm20/DCGAN-tensorflow/) and edited for this project. The script should be run in 2 stages
 
 + Training: train GAN, record & output losses, output training images, create checkpoints
 + Image generation: load checkpoints, generate grid images & single images from trained GAN.
