@@ -2,7 +2,7 @@ import os
 import scipy.misc
 import numpy as np
 
-from model2 import DCGAN
+from model import DCGAN
 from utils import pp, visualize, to_json, show_all_variables
 
 import tensorflow as tf
@@ -30,6 +30,9 @@ flags.DEFINE_integer("output_freq", 20, "Number of iterations before every gener
 flags.DEFINE_integer("epoch_num", 0, "Starting epoch number [0]")
 flags.DEFINE_integer("counter", 1, "Starting counter of training [1]")
 flags.DEFINE_string("trial", None, "Trial number for a given dataset [None]")
+flags.DEFINE_integer("grid_size", 16, "Number of images in a grid for image generation [16]")
+flags.DEFINE_boolean("single", False, "True for generating single images after training [False]")
+flags.DEFINE_boolean("grid", False, "True for generating grid images after training [False]")
 FLAGS = flags.FLAGS
 
 def main(_):
@@ -49,60 +52,84 @@ def main(_):
   run_config = tf.ConfigProto()
   run_config.gpu_options.allow_growth=True
 
-  with tf.Session(config=run_config) as sess:
-    if FLAGS.dataset == 'mnist':
-      dcgan = DCGAN(
-          sess,
-          input_width=FLAGS.input_width,
-          input_height=FLAGS.input_height,
-          output_width=FLAGS.output_width,
-          output_height=FLAGS.output_height,
-          batch_size=FLAGS.batch_size,
-          sample_num=FLAGS.batch_size,
-          y_dim=10,
-          z_dim=FLAGS.generate_test_images,
-          dataset_name=FLAGS.dataset,
-          input_fname_pattern=FLAGS.input_fname_pattern,
-          crop=FLAGS.crop,
-          checkpoint_dir=FLAGS.checkpoint_dir,
-          sample_dir=FLAGS.sample_dir,
-          data_dir=FLAGS.data_dir,
-          output_freq = FLAGS.output_freq)
-    else:
-      dcgan = DCGAN(
-          sess,
-          input_width=FLAGS.input_width,
-          input_height=FLAGS.input_height,
-          output_width=FLAGS.output_width,
-          output_height=FLAGS.output_height,
-          batch_size=FLAGS.batch_size,
-          sample_num=FLAGS.batch_size,
-          z_dim=FLAGS.generate_test_images,
-          dataset_name=FLAGS.dataset,
-          input_fname_pattern=FLAGS.input_fname_pattern,
-          crop=FLAGS.crop,
-          checkpoint_dir=FLAGS.checkpoint_dir,
-          sample_dir=FLAGS.sample_dir,
-          data_dir=FLAGS.data_dir,
-          output_freq = FLAGS.output_freq,
-	  epoch_num = FLAGS.epoch_num,
-          counter = FLAGS.counter,
-          trial = FLAGS.trial)
+  if FLAGS.trial and not FLAGS.train:
+    savedir5 = "./single_images/" + FLAGS.dataset + "_trial" + str(FLAGS.trial) + "/"
+    savedir1 = "./grid_images/" + FLAGS.dataset + "_trial" + str(FLAGS.trial) + "/"
+  elif not FLAGS.trial and not FLAGS.train:
+    savedir5 = "./single_images/" + FLAGS.dataset + "/"
+    savedir1 = "./grid_images/" + FLAGS.dataset + "/"
 
-    show_all_variables()
-
-    if FLAGS.train:
-      dcgan.train(FLAGS)
-    else:
-      if not dcgan.load(FLAGS.checkpoint_dir)[0]:
-        raise Exception("[!] Train a model first, then run test mode")
-
-      if FLAGS.trial:
-        savedir5 = "./single_images/" + FLAGS.dataset + "_trial" + str(FLAGS.trial) + "/"
-        savedir1 = "./grid_images/" + FLAGS.dataset + "_trial" + str(FLAGS.trial) + "/"
+  if FLAGS.train:
+    with tf.Session(config=run_config) as sess:
+      if FLAGS.dataset == 'mnist':
+        dcgan = DCGAN(
+            sess,
+            input_width=FLAGS.input_width,
+            input_height=FLAGS.input_height,
+            output_width=FLAGS.output_width,
+            output_height=FLAGS.output_height,
+            batch_size=FLAGS.batch_size,
+            sample_num=FLAGS.batch_size,
+            y_dim=10,
+            z_dim=FLAGS.generate_test_images,
+            dataset_name=FLAGS.dataset,
+            input_fname_pattern=FLAGS.input_fname_pattern,
+            crop=FLAGS.crop,
+            checkpoint_dir=FLAGS.checkpoint_dir,
+            sample_dir=FLAGS.sample_dir,
+            data_dir=FLAGS.data_dir,
+            output_freq = FLAGS.output_freq)
       else:
-        savedir5 = "./single_images/" + FLAGS.dataset + "/"
-        savedir1 = "./grid_images/" + FLAGS.dataset + "/"
+        dcgan = DCGAN(
+            sess,
+            input_width=FLAGS.input_width,
+            input_height=FLAGS.input_height,
+            output_width=FLAGS.output_width,
+            output_height=FLAGS.output_height,
+            batch_size=FLAGS.batch_size,
+            sample_num=FLAGS.batch_size,
+            z_dim=FLAGS.generate_test_images,
+            dataset_name=FLAGS.dataset,
+            input_fname_pattern=FLAGS.input_fname_pattern,
+            crop=FLAGS.crop,
+            checkpoint_dir=FLAGS.checkpoint_dir,
+            sample_dir=FLAGS.sample_dir,
+            data_dir=FLAGS.data_dir,
+            output_freq = FLAGS.output_freq,
+            epoch_num = FLAGS.epoch_num,
+            counter = FLAGS.counter,
+            trial = FLAGS.trial)
+
+      show_all_variables()
+      dcgan.train(FLAGS)
+    
+  elif FLAGS.grid:
+    with tf.Session(config=run_config) as sess:
+
+      dcgan1 = DCGAN(
+        sess,
+        input_width=FLAGS.input_width,
+        input_height=FLAGS.input_height,
+        output_width=FLAGS.output_width,
+        output_height=FLAGS.output_height,
+        batch_size=FLAGS.batch_size,
+        sample_num=FLAGS.batch_size,
+        z_dim=FLAGS.generate_test_images,
+        dataset_name=FLAGS.dataset,
+        input_fname_pattern=FLAGS.input_fname_pattern,
+        crop=FLAGS.crop,
+        checkpoint_dir=FLAGS.checkpoint_dir,
+        sample_dir=FLAGS.sample_dir,
+        data_dir=FLAGS.data_dir,
+        output_freq = FLAGS.output_freq,
+        epoch_num = FLAGS.epoch_num,
+        counter = FLAGS.counter,
+        trial = FLAGS.trial)
+
+      if not dcgan1.load(FLAGS.checkpoint_dir)[0]:
+        raise Exception("[!] Train a model first, then run test mode")
+      # Saving grid images
+      visualize(sess, dcgan1, FLAGS, 1, savedir1)
 
       # to_json("./web/js/layers.js", [dcgan.h0_w, dcgan.h0_b, dcgan.g_bn0],
       #                 [dcgan.h1_w, dcgan.h1_b, dcgan.g_bn1],
@@ -111,10 +138,36 @@ def main(_):
       #                 [dcgan.h4_w, dcgan.h4_b, None])
 
       # Below is codes for visualization
+
+  elif FLAGS.single:
+    with tf.Session(config=run_config) as sess:
+
+      dcgan5 = DCGAN(
+        sess,
+        input_width=FLAGS.input_width,
+        input_height=FLAGS.input_height,
+        output_width=FLAGS.output_width,
+        output_height=FLAGS.output_height,
+        batch_size=FLAGS.batch_size,
+        sample_num=FLAGS.batch_size,
+        z_dim=FLAGS.generate_test_images,
+        dataset_name=FLAGS.dataset,
+        input_fname_pattern=FLAGS.input_fname_pattern,
+        crop=FLAGS.crop,
+        checkpoint_dir=FLAGS.checkpoint_dir,
+        sample_dir=FLAGS.sample_dir,
+        data_dir=FLAGS.data_dir,
+        output_freq = FLAGS.output_freq,
+        epoch_num = FLAGS.epoch_num,
+        counter = FLAGS.counter,
+        trial = FLAGS.trial)
+
+      if not dcgan5.load(FLAGS.checkpoint_dir)[0]:
+        raise Exception("[!] Train a model first, then run test mode")
+
       # Saving single images
-      visualize(sess, dcgan, FLAGS, 5, savedir5)
-      # Saving grid images
-      visualize(sess, dcgan, FLAGS, 1, savedir1)
+      visualize(sess, dcgan5, FLAGS, 5, savedir5)
+      
 
 if __name__ == '__main__':
   tf.app.run()

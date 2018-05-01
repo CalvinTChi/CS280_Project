@@ -21,10 +21,9 @@ python main.py --dataset [dataset_name] --input_height=[num] --output_height=[nu
 Image generation recommended inputs. Not including `--train` means loading checkpoint as specified by `--dataset` and possibly `--trial` and generating images. 
 
 `
-python main.py --dataset [dataset_name] --input_height=[num] --output_height=[num] --batch_size=[num] --trial=[num] --data_dir [data_dir] --input_fname_pattern="*.jpg"
+python main.py --dataset [dataset_name] --input_height=[num] --output_height=[num] --batch_size=[num] --[single|grid] --trial=[num] --data_dir [data_dir] --input_fname_pattern="*.jpg"
 `
 
-+ `batch_size`: number of single images to generate and number of images in a grid 
++ `batch_size`: number of images in a grid or number of single images to generate
 + `trial`: specify if trial number was specified during training
-
-
++ `[single|grid]`: specify whether to output single images or grid of images
