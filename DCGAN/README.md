@@ -6,6 +6,7 @@ Script to run deep convolutional GAN, taken from [carpedm20](https://github.com/
 
 # Usage
 Train recommended inputs
+
 `
 python main.py --dataset [dataset_name] --input_height=[num] --output_height=[num] --data_dir [data_dir] --input_fname_pattern="*.jpg" --trial=[num] --epoch_num=[num] --counter=[num] --output_freq [num] --train 
 `
@@ -18,6 +19,7 @@ python main.py --dataset [dataset_name] --input_height=[num] --output_height=[nu
 + `output_freq`: number of iterations before every training image output
 
 Image generation recommended inputs. Not including `--train` means loading checkpoint as specified by `--dataset` and possibly `--trial` and generating images. 
+
 `
 python main.py --dataset [dataset_name] --input_height=[num] --output_height=[num] --batch_size=[num] --trial=[num]
 `
