@@ -2,7 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import glob
 
-model = '/transfer_synthetic'
+name = 'transfer_synthetic'
+model = '/transfer_combined'
 t_dir = './logs' + model + '/train*.npy'
 v_dir = './logs' + model + '/val*.npy'
 
@@ -23,6 +24,5 @@ for f in glob.glob(v_dir):
     v_acc.append(stat[1])
 
 plt.plot(t_acc)
-plt.show()
 plt.plot(v_acc)
 plt.show()
