@@ -22,9 +22,21 @@ True negative:  536
 False positive:  355
 False negative:  204
 True positive:  736
+
+Transfer val synthetic
+True negative:  0
+False positive:  940
+False negative:  0
+True positive:  940
+
+Transfer val synthetic_real
+True negative:  226
+False positive:  714
+False negative:  322
+True positive:  618
 """
-truths = np.load('./predictions/transfer_combined_reversed/truths.npy')
-preds = np.load('./predictions/transfer_combined_reversed/preds.npy')
+truths = np.load('./predictions/val_synthetic_real/truths.npy')
+preds = np.load('./predictions/val_synthetic_real/preds.npy')
 
 precision, recall, _ = precision_recall_curve(truths, preds)
 average_precision = average_precision_score(truths, preds)
@@ -45,4 +57,4 @@ plt.ylim([0.0, 1.05])
 plt.xlim([0.0, 1.0])
 plt.title('2-class Precision-Recall curve: AP={0:0.2f}'.format(
           average_precision))
-plt.savefig('transfer_combined_reversed.jpg')
+plt.savefig('val_synthetic_curve_real.jpg')
