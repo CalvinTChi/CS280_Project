@@ -4,6 +4,7 @@ Some codes from https://github.com/Newmu/dcgan_code
 from __future__ import division
 import math
 import json
+import os
 import random
 import pprint
 import scipy.misc
@@ -30,6 +31,7 @@ def get_image(image_path, input_height, input_width,
                    resize_height, resize_width, crop)
 
 def save_images(images, size, image_path):
+
   return imsave(inverse_transform(images), size, image_path)
 
 def imread(path, grayscale = False):
@@ -179,7 +181,9 @@ def make_gif(images, fname, duration=2, true_image=False):
   clip = mpy.VideoClip(make_frame, duration=duration)
   clip.write_gif(fname, fps = len(images) / duration)
 
-def visualize(sess, dcgan, config, option):
+def visualize(sess, dcgan, config, option, save_dir):
+  if not os.path.exists(save_dir):
+    os.makedirs(save_dir)
   image_frame_dim = int(math.ceil(config.batch_size**.5))
   if option == 0:
     z_sample = np.random.uniform(-0.5, 0.5, size=(config.batch_size, dcgan.z_dim))
@@ -187,9 +191,10 @@ def visualize(sess, dcgan, config, option):
     save_images(samples, [image_frame_dim, image_frame_dim], './samples/test_%s.png' % strftime("%Y-%m-%d-%H-%M-%S", gmtime()))
   elif option == 1:
     values = np.arange(0, 1, 1./config.batch_size)
-    for idx in xrange(dcgan.z_dim):
-      print(" [*] %d" % idx)
-      z_sample = np.random.uniform(-1, 1, size=(config.batch_size , dcgan.z_dim))
+    num_test = 10
+    for idx in xrange(num_test):
+      #print(" [*] %d" % idx)
+      z_sample = np.random.uniform(-1, 1, size=(config.batch_size, dcgan.z_dim))
       for kdx, z in enumerate(z_sample):
         z[idx] = values[kdx]
 
@@ -202,7 +207,8 @@ def visualize(sess, dcgan, config, option):
       else:
         samples = sess.run(dcgan.sampler, feed_dict={dcgan.z: z_sample})
 
-      save_images(samples, [image_frame_dim, image_frame_dim], './samples/test_arange_%s.png' % (idx))
+      save_images(samples, [image_frame_dim, image_frame_dim], save_dir + 'test_arange_%s.png' % (idx))
+      
   elif option == 2:
     values = np.arange(0, 1, 1./config.batch_size)
     for idx in [random.randint(0, dcgan.z_dim - 1) for _ in xrange(dcgan.z_dim)]:
@@ -251,7 +257,10 @@ def visualize(sess, dcgan, config, option):
     new_image_set = [merge(np.array([images[idx] for images in image_set]), [10, 10]) \
         for idx in range(64) + range(63, -1, -1)]
     make_gif(new_image_set, './samples/test_gif_merged.gif', duration=8)
-
+  elif option == 5:
+    z_sample = np.random.uniform(-1, 1, size=(config.batch_size, dcgan.z_dim))
+    samples = sess.run(dcgan.sampler, feed_dict={dcgan.z: z_sample})
+    single_image_save(samples, save_dir)
 
 def image_manifold_size(num_images):
   manifold_h = int(np.floor(np.sqrt(num_images)))

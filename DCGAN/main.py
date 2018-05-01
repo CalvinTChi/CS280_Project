@@ -17,16 +17,22 @@ flags.DEFINE_integer("input_height", 108, "The size of image to use (will be cen
 flags.DEFINE_integer("input_width", None, "The size of image to use (will be center cropped). If None, same value as input_height [None]")
 flags.DEFINE_integer("output_height", 64, "The size of the output images to produce [64]")
 flags.DEFINE_integer("output_width", None, "The size of the output images to produce. If None, same value as output_height [None]")
-flags.DEFINE_string("dataset", "celebA", "The name of dataset [celebA, mnist, lsun]")
+flags.DEFINE_string("dataset", "celebA", "The name of dataset [celebA, mnist, lsun, lymph_cancer, lymph_normal]")
 flags.DEFINE_string("input_fname_pattern", "*.jpg", "Glob pattern of filename of input images [*]")
 flags.DEFINE_string("checkpoint_dir", "checkpoint", "Directory name to save the checkpoints [checkpoint]")
 flags.DEFINE_string("data_dir", "./data", "Root directory of dataset [data]")
-flags.DEFINE_string("sample_dir", "samples", "Directory name to save the image samples [samples]")
+flags.DEFINE_string("sample_dir", "training_images", "Directory name to save the image samples [training_images]")
 flags.DEFINE_boolean("train", False, "True for training, False for testing [False]")
 flags.DEFINE_boolean("crop", False, "True for training, False for testing [False]")
 flags.DEFINE_boolean("visualize", False, "True for visualizing, False for nothing [False]")
 flags.DEFINE_integer("generate_test_images", 100, "Number of images to generate during test. [100]")
 flags.DEFINE_integer("output_freq", 20, "Number of iterations before every generated image output [20]")
+flags.DEFINE_integer("epoch_num", 0, "Starting epoch number [0]")
+flags.DEFINE_integer("counter", 1, "Starting counter of training [1]")
+flags.DEFINE_string("trial", None, "Trial number for a given dataset [None]")
+flags.DEFINE_integer("grid_size", 16, "Number of images in a grid for image generation [16]")
+flags.DEFINE_boolean("single", False, "True for generating single images after training [False]")
+flags.DEFINE_boolean("grid", False, "True for generating grid images after training [False]")
 FLAGS = flags.FLAGS
 
 def main(_):
@@ -46,112 +52,122 @@ def main(_):
   run_config = tf.ConfigProto()
   run_config.gpu_options.allow_growth=True
 
-  with tf.Session(config=run_config) as sess:
-    if FLAGS.dataset == 'mnist':
-      dcgan = DCGAN(
-          sess,
-          input_width=FLAGS.input_width,
-          input_height=FLAGS.input_height,
-          output_width=FLAGS.output_width,
-          output_height=FLAGS.output_height,
-          batch_size=FLAGS.batch_size,
-          sample_num=FLAGS.batch_size,
-          y_dim=10,
-          z_dim=FLAGS.generate_test_images,
-          dataset_name=FLAGS.dataset,
-          input_fname_pattern=FLAGS.input_fname_pattern,
-          crop=FLAGS.crop,
-          checkpoint_dir=FLAGS.checkpoint_dir,
-          sample_dir=FLAGS.sample_dir,
-          data_dir=FLAGS.data_dir)
-    elif FLAGS.dataset == 'mnist8':
-      dcgan = DCGAN(
-          sess,
-          input_width=FLAGS.input_width,
-          input_height=FLAGS.input_height,
-          output_width=FLAGS.output_width,
-          output_height=FLAGS.output_height,
-          batch_size=FLAGS.batch_size,
-          sample_num=FLAGS.batch_size,
-          y_dim=1,
-          z_dim=FLAGS.generate_test_images,
-          dataset_name=FLAGS.dataset,
-          input_fname_pattern=FLAGS.input_fname_pattern,
-          crop=FLAGS.crop,
-          checkpoint_dir=FLAGS.checkpoint_dir,
-          sample_dir=FLAGS.sample_dir,
-          data_dir=FLAGS.data_dir)
-    elif FLAGS.dataset == 'lymph_cancer' or FLAGS.dataset == 'lymph_normal':
-      dcgan = DCGAN(
-          sess,
-          input_width=FLAGS.input_width,
-          input_height=FLAGS.input_height,
-          output_width=FLAGS.output_width,
-          output_height=FLAGS.output_height,
-          batch_size=FLAGS.batch_size,
-          sample_num=FLAGS.batch_size,
-          #y_dim=1,
-          z_dim=FLAGS.generate_test_images,
-          dataset_name=FLAGS.dataset,
-          input_fname_pattern=FLAGS.input_fname_pattern,
-          crop=FLAGS.crop,
-          checkpoint_dir=FLAGS.checkpoint_dir,
-          sample_dir=FLAGS.sample_dir,
-          data_dir=FLAGS.data_dir,
-          output_freq = FLAGS.output_freq)
-    elif FLAGS.dataset == 'bedroom':
-      dcgan = DCGAN(
-          sess,
-          input_width=FLAGS.input_width,
-          input_height=FLAGS.input_height,
-          output_width=FLAGS.output_width,
-          output_height=FLAGS.output_height,
-          batch_size=FLAGS.batch_size,
-          sample_num=FLAGS.batch_size,
-          #y_dim=1,
-          z_dim=FLAGS.generate_test_images,
-          dataset_name=FLAGS.dataset,
-          input_fname_pattern=FLAGS.input_fname_pattern,
-          crop=FLAGS.crop,
-          checkpoint_dir=FLAGS.checkpoint_dir,
-          sample_dir=FLAGS.sample_dir,
-          data_dir=FLAGS.data_dir,
-          output_freq = FLAGS.output_freq)
-    else:
-      dcgan = DCGAN(
-          sess,
-          input_width=FLAGS.input_width,
-          input_height=FLAGS.input_height,
-          output_width=FLAGS.output_width,
-          output_height=FLAGS.output_height,
-          batch_size=FLAGS.batch_size,
-          sample_num=FLAGS.batch_size,
-          z_dim=FLAGS.generate_test_images,
-          dataset_name=FLAGS.dataset,
-          input_fname_pattern=FLAGS.input_fname_pattern,
-          crop=FLAGS.crop,
-          checkpoint_dir=FLAGS.checkpoint_dir,
-          sample_dir=FLAGS.sample_dir,
-          data_dir=FLAGS.data_dir)
+  if FLAGS.trial and not FLAGS.train:
+    savedir5 = "./single_images/" + FLAGS.dataset + "_trial" + str(FLAGS.trial) + "/"
+    savedir1 = "./grid_images/" + FLAGS.dataset + "_trial" + str(FLAGS.trial) + "/"
+  elif not FLAGS.trial and not FLAGS.train:
+    savedir5 = "./single_images/" + FLAGS.dataset + "/"
+    savedir1 = "./grid_images/" + FLAGS.dataset + "/"
 
-    show_all_variables()
+  if FLAGS.train:
+    with tf.Session(config=run_config) as sess:
+      if FLAGS.dataset == 'mnist':
+        dcgan = DCGAN(
+            sess,
+            input_width=FLAGS.input_width,
+            input_height=FLAGS.input_height,
+            output_width=FLAGS.output_width,
+            output_height=FLAGS.output_height,
+            batch_size=FLAGS.batch_size,
+            sample_num=FLAGS.batch_size,
+            y_dim=10,
+            z_dim=FLAGS.generate_test_images,
+            dataset_name=FLAGS.dataset,
+            input_fname_pattern=FLAGS.input_fname_pattern,
+            crop=FLAGS.crop,
+            checkpoint_dir=FLAGS.checkpoint_dir,
+            sample_dir=FLAGS.sample_dir,
+            data_dir=FLAGS.data_dir,
+            output_freq = FLAGS.output_freq)
+      else:
+        dcgan = DCGAN(
+            sess,
+            input_width=FLAGS.input_width,
+            input_height=FLAGS.input_height,
+            output_width=FLAGS.output_width,
+            output_height=FLAGS.output_height,
+            batch_size=FLAGS.batch_size,
+            sample_num=FLAGS.batch_size,
+            z_dim=FLAGS.generate_test_images,
+            dataset_name=FLAGS.dataset,
+            input_fname_pattern=FLAGS.input_fname_pattern,
+            crop=FLAGS.crop,
+            checkpoint_dir=FLAGS.checkpoint_dir,
+            sample_dir=FLAGS.sample_dir,
+            data_dir=FLAGS.data_dir,
+            output_freq = FLAGS.output_freq,
+            epoch_num = FLAGS.epoch_num,
+            counter = FLAGS.counter,
+            trial = FLAGS.trial)
 
-    if FLAGS.train:
+      show_all_variables()
       dcgan.train(FLAGS)
-    else:
-      if not dcgan.load(FLAGS.checkpoint_dir)[0]:
+    
+  elif FLAGS.grid:
+    with tf.Session(config=run_config) as sess:
+
+      dcgan1 = DCGAN(
+        sess,
+        input_width=FLAGS.input_width,
+        input_height=FLAGS.input_height,
+        output_width=FLAGS.output_width,
+        output_height=FLAGS.output_height,
+        batch_size=FLAGS.batch_size,
+        sample_num=FLAGS.batch_size,
+        z_dim=FLAGS.generate_test_images,
+        dataset_name=FLAGS.dataset,
+        input_fname_pattern=FLAGS.input_fname_pattern,
+        crop=FLAGS.crop,
+        checkpoint_dir=FLAGS.checkpoint_dir,
+        sample_dir=FLAGS.sample_dir,
+        data_dir=FLAGS.data_dir,
+        output_freq = FLAGS.output_freq,
+        epoch_num = FLAGS.epoch_num,
+        counter = FLAGS.counter,
+        trial = FLAGS.trial)
+
+      if not dcgan1.load(FLAGS.checkpoint_dir)[0]:
         raise Exception("[!] Train a model first, then run test mode")
+      # Saving grid images
+      visualize(sess, dcgan1, FLAGS, 1, savedir1)
+
+      # to_json("./web/js/layers.js", [dcgan.h0_w, dcgan.h0_b, dcgan.g_bn0],
+      #                 [dcgan.h1_w, dcgan.h1_b, dcgan.g_bn1],
+      #                 [dcgan.h2_w, dcgan.h2_b, dcgan.g_bn2],
+      #                 [dcgan.h3_w, dcgan.h3_b, dcgan.g_bn3],
+      #                 [dcgan.h4_w, dcgan.h4_b, None])
+
+      # Below is codes for visualization
+
+  elif FLAGS.single:
+    with tf.Session(config=run_config) as sess:
+
+      dcgan5 = DCGAN(
+        sess,
+        input_width=FLAGS.input_width,
+        input_height=FLAGS.input_height,
+        output_width=FLAGS.output_width,
+        output_height=FLAGS.output_height,
+        batch_size=FLAGS.batch_size,
+        sample_num=FLAGS.batch_size,
+        z_dim=FLAGS.generate_test_images,
+        dataset_name=FLAGS.dataset,
+        input_fname_pattern=FLAGS.input_fname_pattern,
+        crop=FLAGS.crop,
+        checkpoint_dir=FLAGS.checkpoint_dir,
+        sample_dir=FLAGS.sample_dir,
+        data_dir=FLAGS.data_dir,
+        output_freq = FLAGS.output_freq,
+        epoch_num = FLAGS.epoch_num,
+        counter = FLAGS.counter,
+        trial = FLAGS.trial)
+
+      if not dcgan5.load(FLAGS.checkpoint_dir)[0]:
+        raise Exception("[!] Train a model first, then run test mode")
+
+      # Saving single images
+      visualize(sess, dcgan5, FLAGS, 5, savedir5)
       
-
-    # to_json("./web/js/layers.js", [dcgan.h0_w, dcgan.h0_b, dcgan.g_bn0],
-    #                 [dcgan.h1_w, dcgan.h1_b, dcgan.g_bn1],
-    #                 [dcgan.h2_w, dcgan.h2_b, dcgan.g_bn2],
-    #                 [dcgan.h3_w, dcgan.h3_b, dcgan.g_bn3],
-    #                 [dcgan.h4_w, dcgan.h4_b, None])
-
-    # Below is codes for visualization
-    OPTION = 1
-    visualize(sess, dcgan, FLAGS, OPTION)
 
 if __name__ == '__main__':
   tf.app.run()

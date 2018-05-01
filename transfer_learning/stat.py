@@ -5,38 +5,56 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import average_precision_score
 
 """
-Transfer combined
-True negative:  818
-False positive:  73
-False negative:  738
-True positive:  202
-
-Transfer real
+BASELINE real training data, real validation
 True negative:  443
 False positive:  448
 False negative:  135
 True positive:  805
 
-Transfer combined reversed
+CCAN synthetic training, real validation
+True negative:  0
+False positive:  891
+False negative:  0
+True positive:  940
+
+CCAN synthetic + real training, real validation
 True negative:  536
 False positive:  355
 False negative:  204
 True positive:  736
 
-Transfer val synthetic
+CCAN synthetic training, synthetic validation
 True negative:  0
 False positive:  940
 False negative:  0
 True positive:  940
 
-Transfer val synthetic_real
+CCAN real training, synthetic validation
 True negative:  226
 False positive:  714
 False negative:  322
 True positive:  618
+
+CCAN synthetic + real training, synthetic validation
+True negative:  861
+False positive:  79
+False negative:  565
+True positive:  375
+
+DCGAN synthetic training, real validation
+True negative:  842
+False positive:  49
+False negative:  892
+True positive:  48
+
+DCGAN synthetic + real training, real validation
+True negative:  685
+False positive:  206
+False negative:  287
+True positive:  653
 """
-truths = np.load('./predictions/val_synthetic_real/truths.npy')
-preds = np.load('./predictions/val_synthetic_real/preds.npy')
+truths = np.load('./predictions/transfer_synthetic/truths.npy')
+preds = np.load('./predictions/transfer_synthetic/preds.npy')
 
 precision, recall, _ = precision_recall_curve(truths, preds)
 average_precision = average_precision_score(truths, preds)
@@ -57,4 +75,4 @@ plt.ylim([0.0, 1.05])
 plt.xlim([0.0, 1.0])
 plt.title('2-class Precision-Recall curve: AP={0:0.2f}'.format(
           average_precision))
-plt.savefig('val_synthetic_curve_real.jpg')
+plt.savefig('transfer_synthetic.jpg')
