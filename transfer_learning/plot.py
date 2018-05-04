@@ -1,11 +1,15 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import glob
+import argparse
 
-name = 'transfer_synthetic'
-model = '/transfer_combined'
-t_dir = './logs' + model + '/train*.npy'
-v_dir = './logs' + model + '/val*.npy'
+parser = argparse.ArgumentParser()
+parser.add_argument('data_dir', type=str)
+args = parser.parse_args()
+data_dir = args.data_dir
+
+t_dir = './logs/' + data_dir + '/datatrain*.npy'
+v_dir = './logs/' + data_dir + '/dataval*.npy'
 
 t_loss = []
 t_acc = []
