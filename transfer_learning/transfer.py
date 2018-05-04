@@ -63,6 +63,9 @@ def train_model(model, criterion, optimizer, scheduler, data_dir, num_epochs=25)
     PATH = './checkpoints/' + data_dir
     if not os.path.isdir(PATH):
         os.mkdir(PATH)
+    LOG_PATH = './logs/' + data_dir
+    if not os.path.isdir(LOG_PATH):
+        os.mkdir(LOG_PATH)
     for epoch in range(num_epochs):
         print('Epoch {}/{}'.format(epoch, num_epochs - 1))
         print('-' * 10)
@@ -121,9 +124,6 @@ def train_model(model, criterion, optimizer, scheduler, data_dir, num_epochs=25)
                 
             # Log the stats every epoch
             stats = np.array([epoch_loss, epoch_acc])
-            LOG_PATH = './logs/' + data_dir
-            if not os.path.isdir():
-                os.mkdir(LOG_PATH)
             file_name = LOG_PATH + phase + '_' + str(epoch) + '.npy'
             np.save(file_name, stats)
 
