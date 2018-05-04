@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 import time
 import os
 import copy
+import argparse
 
 def imshow(inp, title=None):
     """Imshow for Tensor."""
@@ -53,12 +54,15 @@ def visualize_model(model, num_images=6):
                 return
     model.train(mode=was_training)
     
-def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
+def train_model(model, criterion, optimizer, scheduler, data_dir, num_epochs=25):
     since = time.time()
 
     best_model_wts = copy.deepcopy(model.state_dict())
     best_acc = 0.0
 
+    PATH = './checkpoints/' + data_dir
+    if not os.path.isdir(PATH):
+        os.mkdir(PATH)
     for epoch in range(num_epochs):
         print('Epoch {}/{}'.format(epoch, num_epochs - 1))
         print('-' * 10)
@@ -109,16 +113,18 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
             print('{} Loss: {:.4f} Acc: {:.4f}'.format(
                 phase, epoch_loss, epoch_acc))
             
-            
             # Log the model every 5 epoch
             if epoch % 5 ==0:
                 print("Logging and checkpointing")
-                PATH = './checkpoints/' + str(epoch) + '.pth'
-                torch.save(model.state_dict(), PATH)
-            
+                NAME = '/' + str(epoch) + '.pth'
+                torch.save(model.state_dict(), PATH + NAME)
+                
             # Log the stats every epoch
             stats = np.array([epoch_loss, epoch_acc])
-            file_name = './logs/' + phase + '_' + str(epoch) + '.npy'
+            LOG_PATH = './logs/' + data_dir
+            if not os.path.isdir():
+                os.mkdir(LOG_PATH)
+            file_name = LOG_PATH + phase + '_' + str(epoch) + '.npy'
             np.save(file_name, stats)
 
             # deep copy the model
@@ -135,6 +141,7 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
 
     # load best model weights
     model.load_state_dict(best_model_wts)
+    torch.save(model.state_dict(), PATH + '/final.pth')
     return model
     
 # Data augmentation and normalization for training
@@ -158,7 +165,10 @@ data_transforms = {
     ]),
 }
 
-data_dir = 'combined_data'
+parser = argparse.ArgumentParser()
+parser.add_argument('data_dir', type=str)
+args = parser.parse_args()
+data_dir = args.data_dir
 image_datasets = {x: datasets.ImageFolder(os.path.join(data_dir, x),
                                           data_transforms[x])
                   for x in ['train', 'val']}
@@ -195,5 +205,4 @@ exp_lr_scheduler = lr_scheduler.StepLR(optimizer_ft, step_size=7, gamma=0.1)
 
 model_ft = train_model(model_ft, criterion, optimizer_ft, exp_lr_scheduler,
                        num_epochs=25)
-torch.save(model_ft.state_dict(), './checkpoints/final.pt')
 # visualize_model(model_ft)
